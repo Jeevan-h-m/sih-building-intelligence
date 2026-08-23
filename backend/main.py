@@ -1,7 +1,7 @@
 from pathlib import Path
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, File, HTTPException, UploadFile
-
+from cv.wall_detection import detect_walls
 from cv.preprocessing import preprocess_blueprint
 from fastapi.staticfiles import StaticFiles
 app = FastAPI(title="SIH Building Intelligence API")
@@ -96,3 +96,40 @@ async def process_blueprint(file: UploadFile = File(...)):
     "processed_filename": output_path.name,
     "processed_url": f"/blueprints/processed/{output_path.name}",
 }
+@app.post("/blueprints/detect-walls")
+async def detect_blueprint_walls(file: UploadFile = File(...)):
+    allowed_types = {
+        "image/png",
+        "image/jpeg",
+    }
+
+    if file.content_type not in allowed_types:
+        raise HTTPException(
+            status_code=400,
+            detail="Wall detection currently supports PNG and JPEG.",
+        )
+
+    input_path = UPLOAD_DIR / file.filename
+    output_path = PROCESSED_DIR / f"{input_path.stem}_walls.png"
+
+    contents = await file.read()
+    input_path.write_bytes(contents)
+
+    try:
+        detect_walls(
+            str(input_path),
+            str(output_path),
+        )
+    except ValueError as error:
+        raise HTTPException(
+            status_code=400,
+            detail=str(error),
+        ) from error
+
+    return {
+        "message": "Wall detection completed",
+        "filename": output_path.name,
+        "wall_detection_url": (
+            f"/blueprints/processed/{output_path.name}"
+        ),
+    }
