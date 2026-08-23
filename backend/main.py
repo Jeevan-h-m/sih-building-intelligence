@@ -116,7 +116,7 @@ async def detect_blueprint_walls(file: UploadFile = File(...)):
     input_path.write_bytes(contents)
 
     try:
-        detect_walls(
+        walls = detect_walls(
             str(input_path),
             str(output_path),
         )
@@ -127,9 +127,11 @@ async def detect_blueprint_walls(file: UploadFile = File(...)):
         ) from error
 
     return {
-        "message": "Wall detection completed",
-        "filename": output_path.name,
-        "wall_detection_url": (
-            f"/blueprints/processed/{output_path.name}"
-        ),
-    }
+    "message": "Wall detection completed",
+    "filename": output_path.name,
+    "wall_detection_url": (
+        f"/blueprints/processed/{output_path.name}"
+    ),
+    "wall_count": len(walls),
+    "walls": walls,
+}
