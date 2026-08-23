@@ -3,8 +3,9 @@ backend/.venv/
 __pycache__/
 *.pyc
 
-# Uploaded files
+# Generated blueprint files
 backend/data/uploads/
+backend/data/processed/
 
 # Node
 frontend/node_modules/

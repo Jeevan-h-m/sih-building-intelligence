@@ -2,9 +2,10 @@ import { useState } from 'react'
 
 function App() {
   const [file, setFile] = useState<File | null>(null)
+  const [originalPreview, setOriginalPreview] = useState<string | null>(null)
+  const [processedPreview, setProcessedPreview] = useState<string | null>(null)
   const [message, setMessage] = useState('')
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [uploading, setUploading] = useState(false)
+  const [processing, setProcessing] = useState(false)
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0]
@@ -12,31 +13,31 @@ function App() {
     if (!selectedFile) return
 
     setFile(selectedFile)
+    setProcessedPreview(null)
     setMessage('')
 
     if (selectedFile.type.startsWith('image/')) {
-      const url = URL.createObjectURL(selectedFile)
-      setPreviewUrl(url)
+      setOriginalPreview(URL.createObjectURL(selectedFile))
     } else {
-      setPreviewUrl(null)
+      setOriginalPreview(null)
     }
   }
 
-  const handleUpload = async () => {
+  const handleProcess = async () => {
     if (!file) {
-      setMessage('Please select a blueprint first.')
+      setMessage('Please select a PNG or JPEG blueprint.')
       return
     }
 
     const formData = new FormData()
     formData.append('file', file)
 
-    setUploading(true)
-    setMessage('Uploading...')
+    setProcessing(true)
+    setMessage('Processing blueprint...')
 
     try {
       const response = await fetch(
-        'http://127.0.0.1:8000/blueprints/upload',
+        'http://127.0.0.1:8000/blueprints/process',
         {
           method: 'POST',
           body: formData,
@@ -46,22 +47,26 @@ function App() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.detail || 'Upload failed')
+        throw new Error(data.detail || 'Processing failed')
       }
 
-      setMessage(`Uploaded successfully: ${data.filename}`)
+      const processedUrl =
+        `http://127.0.0.1:8000${data.processed_url}`
+
+      setProcessedPreview(processedUrl)
+      setMessage('Blueprint processed successfully.')
     } catch (error) {
       console.error(error)
-      setMessage('Upload failed. Check that the backend is running.')
+      setMessage('Processing failed. Check the backend.')
     } finally {
-      setUploading(false)
+      setProcessing(false)
     }
   }
 
   return (
     <main
       style={{
-        maxWidth: '900px',
+        maxWidth: '1200px',
         margin: '0 auto',
         padding: '40px 20px',
         fontFamily: 'Arial, sans-serif',
@@ -70,16 +75,14 @@ function App() {
       <h1>SIH Building Intelligence</h1>
 
       <p>
-        Upload a 2D building blueprint to begin the processing pipeline.
+        2D Blueprint → Preprocessing
       </p>
 
-      <div style={{ marginTop: '30px' }}>
-        <input
-          type="file"
-          accept=".png,.jpg,.jpeg,.pdf"
-          onChange={handleFileChange}
-        />
-      </div>
+      <input
+        type="file"
+        accept=".png,.jpg,.jpeg"
+        onChange={handleFileChange}
+      />
 
       {file && (
         <p>
@@ -88,36 +91,56 @@ function App() {
       )}
 
       <button
-        onClick={handleUpload}
-        disabled={!file || uploading}
+        onClick={handleProcess}
+        disabled={!file || processing}
         style={{
-          marginTop: '10px',
           padding: '10px 18px',
-          cursor: !file || uploading ? 'not-allowed' : 'pointer',
+          marginTop: '10px',
         }}
       >
-        {uploading ? 'Uploading...' : 'Upload Blueprint'}
+        {processing ? 'Processing...' : 'Process Blueprint'}
       </button>
 
-      {message && (
-        <p style={{ marginTop: '20px' }}>
-          {message}
-        </p>
-      )}
+      {message && <p>{message}</p>}
 
-      {previewUrl && (
-        <section style={{ marginTop: '30px' }}>
-          <h2>Blueprint Preview</h2>
+      {(originalPreview || processedPreview) && (
+        <section
+          style={{
+            display: 'flex',
+            gap: '30px',
+            marginTop: '30px',
+            alignItems: 'flex-start',
+          }}
+        >
+          {originalPreview && (
+            <div style={{ flex: 1 }}>
+              <h2>Original Blueprint</h2>
 
-          <img
-            src={previewUrl}
-            alt="Uploaded blueprint preview"
-            style={{
-              maxWidth: '100%',
-              border: '1px solid #ccc',
-              borderRadius: '8px',
-            }}
-          />
+              <img
+                src={originalPreview}
+                alt="Original blueprint"
+                style={{
+                  width: '100%',
+                  border: '1px solid #ccc',
+                }}
+              />
+            </div>
+          )}
+
+          {processedPreview && (
+            <div style={{ flex: 1 }}>
+              <h2>Processed Blueprint</h2>
+
+              <img
+                src={processedPreview}
+                alt="Processed blueprint"
+                style={{
+                  width: '100%',
+                  border: '1px solid #ccc',
+                }}
+              />
+            </div>
+          )}
         </section>
       )}
     </main>
